@@ -1,6 +1,5 @@
 package ca.gbc.comp3074g22.Dialogs;
 
-
 import android.app.Activity;
 import android.app.Dialog;
 import android.graphics.drawable.ColorDrawable;
@@ -14,7 +13,7 @@ import ca.gbc.comp3074g22.R;
 public class AddEmployeeDialog {
 
     public interface EmployeeAddedListener {
-        void onEmployeeAdded(String employeeName);
+        void onEmployeeAdded(String employeeName, String email, String contactNumber, String position, String address,int code);
     }
 
     private EmployeeAddedListener listener;
@@ -27,28 +26,38 @@ public class AddEmployeeDialog {
         final Dialog dialog = new Dialog(activity);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setCancelable(false);
-        dialog.setContentView(R.layout.add_employee_dialog);  // Ensure the layout is for adding employees
+        dialog.setContentView(R.layout.add_employee_dialog);  // Ensure the layout is updated for additional fields
         dialog.getWindow().setBackgroundDrawable(new ColorDrawable(android.graphics.Color.TRANSPARENT));
 
-        EditText inputEmployee = dialog.findViewById(R.id.employee_name_input); // Change ID to match employee input field
+        EditText inputName = dialog.findViewById(R.id.employee_name_input);
+        EditText inputEmail = dialog.findViewById(R.id.employee_email_input);
+        EditText inputContact = dialog.findViewById(R.id.employee_contact_input);
+        EditText inputPosition = dialog.findViewById(R.id.employee_position_input);
+        EditText inputAddress = dialog.findViewById(R.id.employee_address_input);
+        EditText inputCode = dialog.findViewById(R.id.employee_code_input);
 
-        Button dialogBtn_Enter = dialog.findViewById(R.id.button_add);
-        Button dialogBtn_cancel = dialog.findViewById(R.id.button_cancel);
+        Button dialogBtnAdd = dialog.findViewById(R.id.button_add);
+        Button dialogBtnCancel = dialog.findViewById(R.id.button_cancel);
 
-        dialogBtn_Enter.setOnClickListener(v -> {
-            String inputEmployeeString = inputEmployee.getText().toString();
+        dialogBtnAdd.setOnClickListener(v -> {
+            String name = inputName.getText().toString();
+            String email = inputEmail.getText().toString();
+            String contact = inputContact.getText().toString();
+            String position = inputPosition.getText().toString();
+            String address = inputAddress.getText().toString();
+            String code = inputCode.getText().toString();
 
-            if (inputEmployeeString.isEmpty()) {
-                Toast.makeText(activity.getApplicationContext(), "Fill required fields.", Toast.LENGTH_SHORT).show();
+            if (name.isEmpty() || email.isEmpty() || contact.isEmpty() || position.isEmpty() || address.isEmpty()) {
+                Toast.makeText(activity.getApplicationContext(), "All fields are required.", Toast.LENGTH_SHORT).show();
             } else {
                 if (listener != null) {
-                    listener.onEmployeeAdded(inputEmployeeString);  // Use employee-related method
+                    listener.onEmployeeAdded(name, email, contact, position, address, Integer.parseInt(code));
                 }
                 dialog.dismiss();
             }
         });
 
-        dialogBtn_cancel.setOnClickListener(v -> {
+        dialogBtnCancel.setOnClickListener(v -> {
             Toast.makeText(activity.getApplicationContext(), "Canceled.", Toast.LENGTH_SHORT).show();
             dialog.dismiss();
         });

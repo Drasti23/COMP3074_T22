@@ -17,6 +17,16 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import ca.gbc.comp3074g22.Dialogs.AddSectionDialog;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+
+import com.google.firebase.firestore.FirebaseFirestore;
+
+import com.google.firebase.firestore.EventListener;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.QuerySnapshot;
 
 public class ManagePOSActivity extends AppCompatActivity implements AddSectionDialog.SectionAddedListener {
 
@@ -24,6 +34,7 @@ public class ManagePOSActivity extends AppCompatActivity implements AddSectionDi
     private ArrayList<String> sectionList;
     private CardAdapter adapter;
     private FloatingActionButton fab;
+    private FirebaseFirestore firestore; // Firestore instance
     ImageView back;
 
     @Override
@@ -31,31 +42,22 @@ public class ManagePOSActivity extends AppCompatActivity implements AddSectionDi
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_manage_posactivity);
 
-        // Set edge-to-edge insets for the activity
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
-        back = findViewById(R.id.imageViewBackButton);
-        back.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent i = new Intent(ManagePOSActivity.this, AdminPortalActivity.class);
-                startActivity(i);
-                finish();
-            }
-        });
+        // Initialize Firestore
+        firestore = FirebaseFirestore.getInstance();
 
-        // Initialize RecyclerView and FloatingActionButton
+        // Initialize UI components
         recyclerView = findViewById(R.id.recyclerView);
         fab = findViewById(R.id.fab);
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        back = findViewById(R.id.imageViewBackButton);
 
         // Initialize the section list and adapter
         sectionList = new ArrayList<>();
         adapter = new CardAdapter(sectionList);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(adapter);
+
+        // Fetch sections from Firestore
+        fetchSectionsFromFirestore();
 
         // Handle FloatingActionButton click to show the dialog
         fab.setOnClickListener(v -> {
@@ -63,13 +65,55 @@ public class ManagePOSActivity extends AppCompatActivity implements AddSectionDi
             dialog.setSectionAddedListener(this); // Set the callback
             dialog.showDialog(ManagePOSActivity.this);
         });
+
+        // Handle back button
+        back.setOnClickListener(v -> {
+            Intent i = new Intent(ManagePOSActivity.this, AdminPortalActivity.class);
+            startActivity(i);
+            finish();
+        });
     }
 
     @Override
     public void onSectionAdded(String sectionName) {
-        // Update the RecyclerView when a new section is added
+        // Add section to RecyclerView
         sectionList.add(sectionName);
         adapter.notifyItemInserted(sectionList.size() - 1);
-        Toast.makeText(this, "Section added: " + sectionName, Toast.LENGTH_SHORT).show();
+
+        // Store the section in Firestore
+        storeSectionInFirestore(sectionName);
+    }
+
+    private void storeSectionInFirestore(String sectionName) {
+        Map<String, Object> sectionData = new HashMap<>();
+        sectionData.put("name", sectionName);
+
+        firestore.collection("sections")
+                .add(sectionData)
+                .addOnSuccessListener(documentReference ->
+                        Toast.makeText(ManagePOSActivity.this, "Saved to Firestore!", Toast.LENGTH_SHORT).show())
+                .addOnFailureListener(e ->
+                        Toast.makeText(ManagePOSActivity.this, "Error saving to Firestore: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+    }
+
+    private void fetchSectionsFromFirestore() {
+        firestore.collection("sections")
+                .addSnapshotListener((value, error) -> {
+                    if (error != null) {
+                        Toast.makeText(this, "Error fetching data: " + error.getMessage(), Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    if (value != null) {
+                        sectionList.clear(); // Clear the list before adding fetched data
+                        for (QueryDocumentSnapshot doc : value) {
+                            String sectionName = doc.getString("name");
+                            if (sectionName != null) {
+                                sectionList.add(sectionName);
+                            }
+                        }
+                        adapter.notifyDataSetChanged(); // Notify the adapter to update the RecyclerView
+                    }
+                });
     }
 }

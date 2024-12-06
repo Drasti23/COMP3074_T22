@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AlertDialog;
@@ -14,15 +15,20 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.firebase.firestore.FirebaseFirestore;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 public class RegisterTimeActivity extends AppCompatActivity {
 
     TextView clockInButton;
     TextView clockOutButton;
     Button back;
+    private FirebaseFirestore firestore;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,16 +36,16 @@ public class RegisterTimeActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_register_time);
 
-
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
 
+        firestore = FirebaseFirestore.getInstance(); // Initialize Firestore
 
         clockInButton = findViewById(R.id.clockInButton);
-        clockOutButton =findViewById(R.id.clockOutButton);
+        clockOutButton = findViewById(R.id.clockOutButton);
         back = findViewById(R.id.buttonBack1);
 
         back.setOnClickListener(new View.OnClickListener() {
@@ -51,13 +57,13 @@ public class RegisterTimeActivity extends AppCompatActivity {
             }
         });
 
-
         clockInButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 showClockInDialog();
             }
         });
+
         clockOutButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -74,6 +80,8 @@ public class RegisterTimeActivity extends AppCompatActivity {
 
     private void showClockInDialog() {
         String currentTime = getCurrentTime();
+        saveTimeToFirestore("Clock In", currentTime);
+
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Success");
         builder.setMessage("Successfully Clocked In at " + currentTime);
@@ -85,21 +93,39 @@ public class RegisterTimeActivity extends AppCompatActivity {
         });
 
         builder.create().show();
-
     }
-    private void showClockOutDialog(){
-        String curTime = getCurrentTime();
+
+    private void showClockOutDialog() {
+        String currentTime = getCurrentTime();
+        saveTimeToFirestore("Clock Out", currentTime);
+
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Success");
-        builder.setMessage("Successfully Clocked Out at " + curTime);
-
+        builder.setMessage("Successfully Clocked Out at " + currentTime);
         builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
                 dialogInterface.dismiss();
             }
         });
-        builder.create().show();
 
+        builder.create().show();
+    }
+
+    // Method to save the time to Firestore
+    private void saveTimeToFirestore(String type, String time) {
+        // Create a data map to store the information
+        Map<String, Object> timeData = new HashMap<>();
+        timeData.put("type", type);
+        timeData.put("time", time);
+        timeData.put("date", new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date()));
+
+        // Save to Firestore in a "time_records" collection
+        firestore.collection("time_records")
+                .add(timeData)
+                .addOnSuccessListener(documentReference ->
+                        Toast.makeText(RegisterTimeActivity.this, type + " time saved to Firestore!", Toast.LENGTH_SHORT).show())
+                .addOnFailureListener(e ->
+                        Toast.makeText(RegisterTimeActivity.this, "Error saving " + type + ": " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
 }
